@@ -107,10 +107,11 @@ export function formatTime(seconds) {
   return `${m}:${rest.toFixed(2).padStart(5, '0')}`;
 }
 
-export function text(ctx, str, x, y, { size = 32, color = '#fff', align = 'center', baseline = 'middle', font = 'Russo One', weight = '', glow = 0, alpha = 1 } = {}) {
+export function text(ctx, str, x, y, { size = 32, color = '#fff', align = 'center', baseline = 'middle', font = 'Rajdhani', weight = 700, glow = 0, alpha = 1, spacing = 0 } = {}) {
   ctx.save();
   ctx.globalAlpha *= alpha;
   ctx.font = `${weight} ${size}px "${font}", system-ui, sans-serif`;
+  if (spacing) ctx.letterSpacing = `${spacing}px`;
   ctx.textAlign = align;
   ctx.textBaseline = baseline;
   if (glow) {
@@ -127,14 +128,24 @@ export function banner(ctx, title, sub, { color = '#fff', alpha = 1, y = H / 2 }
   ctx.save();
   ctx.globalAlpha = alpha;
   const g = ctx.createLinearGradient(0, 0, W, 0);
-  g.addColorStop(0, 'rgba(9,7,32,0)');
-  g.addColorStop(0.5, 'rgba(9,7,32,0.85)');
-  g.addColorStop(1, 'rgba(9,7,32,0)');
+  g.addColorStop(0, 'rgba(6,7,16,0)');
+  g.addColorStop(0.3, 'rgba(6,7,16,0.72)');
+  g.addColorStop(0.7, 'rgba(6,7,16,0.72)');
+  g.addColorStop(1, 'rgba(6,7,16,0)');
   ctx.fillStyle = g;
-  ctx.fillRect(0, y - 90, W, 180);
+  ctx.fillRect(0, y - 84, W, 168);
+  // Hairlines above and below, brightest in the middle.
+  const line = ctx.createLinearGradient(W * 0.2, 0, W * 0.8, 0);
+  line.addColorStop(0, 'rgba(255,255,255,0)');
+  line.addColorStop(0.5, color);
+  line.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = line;
+  ctx.globalAlpha = alpha * 0.8;
+  ctx.fillRect(W * 0.2, y - 84, W * 0.6, 2);
+  ctx.fillRect(W * 0.2, y + 82, W * 0.6, 2);
   ctx.restore();
-  text(ctx, title, W / 2, y - (sub ? 18 : 0), { size: 84, color, glow: 30, alpha });
-  if (sub) text(ctx, sub, W / 2, y + 50, { size: 26, font: 'Inter', weight: 700, color: '#d6d2f3', alpha });
+  text(ctx, title.toUpperCase(), W / 2, y - (sub ? 16 : 0), { size: 92, color, glow: 24, alpha, spacing: 6 });
+  if (sub) text(ctx, sub.toUpperCase(), W / 2, y + 48, { size: 24, weight: 600, color: 'rgba(225,230,255,0.85)', alpha, spacing: 4 });
 }
 
 export class Particles {

@@ -21,6 +21,7 @@ import GameArt from '../components/GameArt.jsx';
 import { GAMES } from './registry.js';
 import { input } from './engine/input.js';
 import { getRoom, useRoom } from './engine/room.js';
+import { POST_DEFAULTS, createPostFX } from './engine/postfx.js';
 import { sfx } from './engine/sfx.js';
 import { H, PLAYER_COLORS, W } from './engine/util.js';
 import './games.css';
@@ -344,6 +345,7 @@ export default function GameHost({ gameId }) {
   useEffect(() => {
     input.capture = true;
     document.body.classList.add('is-game');
+    document.fonts?.load('700 20px Rajdhani');
     return () => {
       input.capture = false;
       document.body.classList.remove('is-game');
@@ -419,7 +421,13 @@ export default function GameHost({ gameId }) {
   useEffect(() => {
     if (phase !== 'playing' || !def) return undefined;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    // Games draw into an offscreen 2D canvas; the WebGL post pass grades it onto
+    // the visible canvas. Without WebGL the visible canvas is drawn to directly.
+    // The canvas outlives restarts, so its GL pipeline is built once and reused.
+    if (canvas.postfx === undefined) canvas.postfx = createPostFX(canvas);
+    const post = canvas.postfx;
+    const scene = post ? document.createElement('canvas') : canvas;
+    const ctx = scene.getContext('2d');
     const roster = playersRef.current;
     const game = def.create({
       players: roster.map(({ name, color, kind }) => ({ name, color, cpu: kind === 'cpu' })),
@@ -435,6 +443,7 @@ export default function GameHost({ gameId }) {
     let acc = 0;
     let reported = false;
     let resultTimer;
+    const t0 = last;
 
     const draw = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -449,6 +458,25 @@ export default function GameHost({ gameId }) {
       const scale = Math.min(cw / W, ch / H);
       const ox = (cw - W * scale) / 2;
       const oy = (ch - H * scale) / 2;
+      if (post) {
+        // Scene buffer covers just the letterboxed game area, capped at 1440p.
+        const k = Math.min(dpr * scale, 2560 / W);
+        const sw = Math.round(W * k);
+        const sh = Math.round(H * k);
+        if (scene.width !== sw || scene.height !== sh) {
+          scene.width = sw;
+          scene.height = sh;
+        }
+        ctx.setTransform(k, 0, 0, k, 0, 0);
+        ctx.fillStyle = '#05040d';
+        ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        game.render(ctx);
+        ctx.restore();
+        const view = { x: Math.round(ox * dpr), y: Math.round(oy * dpr), w: Math.round(W * scale * dpr), h: Math.round(H * scale * dpr) };
+        post.render(scene, view, { ...POST_DEFAULTS, ...def.post, ...game.post }, (performance.now() - t0) / 1000);
+        return;
+      }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.fillStyle = '#05040d';
       ctx.fillRect(0, 0, pw, ph);
