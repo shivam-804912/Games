@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, LogOut, RotateCw, WifiOff } from 'lucide-react';
 import { LogoMark } from '../components/Logo.jsx';
+import { openRoomSocket } from './engine/net.js';
 import './games.css';
 
 /*
  * Phone controller: join a room by code, then send stick + A/B state to the
- * big screen over the /pv-ws relay.
+ * big screen (relay or WebRTC, see engine/net.js).
  */
 
 const STICK_RADIUS = 60;
@@ -153,8 +154,7 @@ export default function Controller() {
 
   const connect = useCallback((roomCode, playerName) => {
     wsRef.current?.close();
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/pv-ws`);
+    const ws = openRoomSocket('phone');
     wsRef.current = ws;
     ws.onopen = () => ws.send(JSON.stringify({ t: 'join', code: roomCode, name: playerName }));
     ws.onmessage = (e) => {

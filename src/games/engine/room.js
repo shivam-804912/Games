@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react';
+import { openRoomSocket } from './net.js';
 
 /*
- * Host side of the phone-controller relay (see server/rooms.js).
+ * Host side of the phone-controller rooms (see net.js for the transport).
  * One room lives for the whole browser session, so phones stay connected
  * while the big screen moves between games.
  */
@@ -20,8 +21,7 @@ class HostRoom {
   }
 
   connect() {
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/pv-ws`);
+    const ws = openRoomSocket('host');
     this.ws = ws;
     ws.onopen = () => ws.send(JSON.stringify({ t: 'host', code: this.code }));
     ws.onmessage = (e) => this.onMessage(JSON.parse(e.data));
